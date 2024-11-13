@@ -139,7 +139,7 @@ class GameOfLifeReverser:
                     )
                     if result is not None:
                         return result
-                    elif self.show_progress:
+                    if self.show_progress:
                         self.progress_bar.update(-1)
 
             current_state = state.copy()
