@@ -88,7 +88,7 @@ The `GameConfig` class stores the pattern matrices representing alive and dead c
 
 The `solve_recursively` function is responsible for attempting to solve the state of a specific cell in the current configuration. It iterates through each pattern matrix and applies the first one that is compatible with the existing state. Upon successfully applying a matrix, it proceeds to solve the next cell. The performance of this function can be influenced by the direction in which it solves the cells, controlled by the `solve_flow_y` flag. While `solve_flow_y = true` generally yields better performance, the optimal configuration may vary depending on the specific problem. If no compatible matrix can be found for a given state, the function returns `None`. If the subsequent cell's solution also returns `None`, backtracking occurs, indicating that the previously selected matrix is not applicable.
 
-###### `try_pattern`
+#### `try_pattern`
 
 The `try_pattern` function attempts to apply a specific pattern matrix to the current state. It checks whether the matrix’s configuration contradicts any previously defined state values. If any contradictions are found, the pattern is deemed incompatible and cannot be applied.
 
