@@ -44,9 +44,6 @@ class GameConfig:
             for neighbors in list(range(0, 3)) + list(range(4, 9)):
                 patterns.extend(self._generate_single_pattern(0, neighbors))
 
-        # sort by sum of 1s in the matrix ascending if the cell is dead and descending if the cell is alive
-        patterns = sorted(patterns, key=np.sum, reverse=end_state == 1)
-
         return patterns
 
     @staticmethod
@@ -212,19 +209,18 @@ class GameOfLifeReverser:
 
 
 def main():
-    show_progress = True
+    show_progress = False
     do_logging = False
 
-    # Example pattern (a simple oscillator)
     target_state = np.array(
         [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ]
     )
 
