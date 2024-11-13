@@ -45,7 +45,13 @@ impl GameConfig {
         }
 
         patterns.sort_by(|a, b| {
-            let count_ones = |matrix: &Matrix| matrix.iter().flat_map(|row| row.iter()).filter(|&&x| x == 1).count();
+            let count_ones = |matrix: &Matrix| {
+                matrix
+                    .iter()
+                    .flat_map(|row| row.iter())
+                    .filter(|&&x| x == 1)
+                    .count()
+            };
             count_ones(a).cmp(&count_ones(b))
         });
         patterns
@@ -65,10 +71,8 @@ impl GameConfig {
 
             // Check if matrix matches our criteria
             let center_correct = matrix[1][1] == cell_state;
-            let neighbor_sum = matrix.iter()
-                .flat_map(|row| row.iter())
-                .sum::<i32>() - matrix[1][1];
-            
+            let neighbor_sum = matrix.iter().flat_map(|row| row.iter()).sum::<i32>() - matrix[1][1];
+
             if center_correct && neighbor_sum == num_neighbors {
                 patterns.push(matrix);
             }
@@ -114,16 +118,24 @@ impl GameOfLifeReverser {
         let mut initial_state = vec![vec![-1; self.width]; self.height];
         let alive_patterns = self.config.alive_patterns.clone();
         let dead_patterns = self.config.dead_patterns.clone();
-        let result = self.solve_recursively(0, 0, &mut initial_state, &alive_patterns, &dead_patterns);
-        
+        let result =
+            self.solve_recursively(0, 0, &mut initial_state, &alive_patterns, &dead_patterns);
+
         if let Some(progress_bar) = &self.progress_bar {
             progress_bar.finish();
         }
-        
+
         result
     }
 
-    fn solve_recursively(&mut self, x: usize, y: usize, state: &mut Matrix, alive_patterns: &Vec<Vec<Vec<i32>>>, dead_patterns: &Vec<Vec<Vec<i32>>>) -> Option<Matrix> {
+    fn solve_recursively(
+        &mut self,
+        x: usize,
+        y: usize,
+        state: &mut Matrix,
+        alive_patterns: &Vec<Vec<Vec<i32>>>,
+        dead_patterns: &Vec<Vec<Vec<i32>>>,
+    ) -> Option<Matrix> {
         if self.debug {
             println!("Exploring position ({}, {})", x, y);
         }
@@ -136,7 +148,7 @@ impl GameOfLifeReverser {
 
         for pattern in patterns {
             let mut current_state = state.clone();
-            
+
             if self.try_pattern(x, y, &mut current_state, pattern) {
                 if self.is_complete(x, y) {
                     return Some(current_state);
@@ -157,7 +169,13 @@ impl GameOfLifeReverser {
                 }
 
                 if next_y < self.height {
-                    if let Some(result) = self.solve_recursively(next_x, next_y, &mut current_state, alive_patterns, dead_patterns) {
+                    if let Some(result) = self.solve_recursively(
+                        next_x,
+                        next_y,
+                        &mut current_state,
+                        alive_patterns,
+                        dead_patterns,
+                    ) {
                         return Some(result);
                     }
                     if let Some(progress_bar) = &self.progress_bar {
@@ -276,7 +294,8 @@ fn main() {
     GameOfLifeReverser::visualize_state(&target_state);
     println!();
 
-    let mut reverser = GameOfLifeReverser::new(target_state.clone(), flow_y, do_logging, show_progress);
+    let mut reverser =
+        GameOfLifeReverser::new(target_state.clone(), flow_y, do_logging, show_progress);
     let mut solution = reverser.find_previous_state();
     let mut current_target = target_state;
 
@@ -288,9 +307,14 @@ fn main() {
             println!("Adding random noise");
             let rand_x = rng.gen_range(0..current_target[0].len());
             let rand_y = rng.gen_range(0..current_target.len());
-            current_target[rand_y][rand_x] = if current_target[rand_y][rand_x] == 0 { 1 } else { 0 };
+            current_target[rand_y][rand_x] = if current_target[rand_y][rand_x] == 0 {
+                1
+            } else {
+                0
+            };
 
-            reverser = GameOfLifeReverser::new(current_target.clone(), flow_y, do_logging, show_progress);
+            reverser =
+                GameOfLifeReverser::new(current_target.clone(), flow_y, do_logging, show_progress);
             solution = reverser.find_previous_state();
         }
 
