@@ -274,6 +274,72 @@ impl GameOfLifeReverser {
     }
 }
 
+// Create Game of Life simulation
+struct GameOfLife {
+    state: Matrix,
+    height: usize,
+    width: usize,
+}
+
+impl GameOfLife {
+    pub fn new(initial_state: Matrix) -> Self {
+        let height = initial_state.len();
+        let width = initial_state[0].len();
+        Self {
+            state: initial_state,
+            height,
+            width,
+        }
+    }
+
+    pub fn step(&mut self) {
+        let mut new_state = vec![vec![0; self.width]; self.height];
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let neighbors = self.count_neighbors(x, y);
+                let cell = self.state[y][x];
+
+                if cell == 1 && (neighbors == 2 || neighbors == 3) {
+                    new_state[y][x] = 1;
+                } else if cell == 0 && neighbors == 3 {
+                    new_state[y][x] = 1;
+                } else {
+                    new_state[y][x] = 0;
+                }
+            }
+        }
+
+        self.state = new_state;
+    }
+
+    pub fn count_neighbors(&self, x: usize, y: usize) -> i32 {
+        let mut count = 0;
+
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if dx == 0 && dy == 0 {
+                    continue;
+                }
+
+                let new_x = x as i32 + dx;
+                let new_y = y as i32 + dy;
+
+                if new_x >= 0
+                    && new_x < self.width as i32
+                    && new_y >= 0
+                    && new_y < self.height as i32
+                    && self.state[new_y as usize][new_x as usize] == 1
+                {
+                    count += 1;
+                }
+            }
+        }
+
+        count
+    }
+}
+
 fn main() {
     let show_progress = true;
     let do_logging = false;
@@ -348,5 +414,10 @@ fn main() {
     println!("Found solution:");
     if let Some(solution) = solution {
         GameOfLifeReverser::visualize_state(&solution);
+        let mut game = GameOfLife::new(solution);
+        game.step();
+        println!();
+        println!("Next state:");
+        GameOfLifeReverser::visualize_state(&game.state);
     }
 }
