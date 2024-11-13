@@ -416,6 +416,7 @@ fn main() {
         GameOfLifeReverser::visualize_state(&solution);
         let mut game = GameOfLife::new(solution);
         game.step();
+        assert!(game.state == current_target);
         println!();
         println!("Next state:");
         GameOfLifeReverser::visualize_state(&game.state);
