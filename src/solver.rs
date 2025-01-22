@@ -302,7 +302,7 @@ impl GameOfLifeReverser {
         for row in state {
             for &cell in row {
                 match cell {
-                    1 => print!("+"),
+                    1 => print!("#"),
                     0 => print!("-"),
                     -1 => print!("?"),
                     _ => print!("x"),
