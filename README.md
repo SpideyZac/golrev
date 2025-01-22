@@ -74,35 +74,31 @@ The board might update as follows:
 
 In this case, the conflicting patterns—specifically the overlap of pre-existing matrix constraints—forces the tool to backtrack and choose new matrices, refining the solution until a valid configuration is found.
 
-### Code Overview
+### Some edge cases
 
-For those who may be unfamiliar with Rust, a less optimized Python version of the implementation is available in the `main.py` file.
+If a matrix were to be applied to a cell where it would go out of bounds (i.e. the cell is on the edge of the game board), there are rules which determine whether it can still be applied:
 
-### GameConfig
+- If the area of the matrix which goes out of bounds does not have any 1s, then it can still be applied as these out-of-bounds 0s will not effect the neighbor count.
+- If the area of the matrix which goes out of bounds does contain 1s, then it cannot be applied as these out-of-bounds 1s will effect the neighbor count.
 
-The `GameConfig` class stores the pattern matrices representing alive and dead cell configurations. These matrices are sorted by the number of alive cells, from lowest to highest. This sorting strategy ensures that matrices with fewer alive cells are prioritized, as they tend to be more versatile and applicable in a wider range of scenarios.
+## Running
 
-### GameOfLifeReverser
+Without debugging:
+```sh
+cargo run --release
+```
 
-#### `solve_recursively`
+With:
+```sh
+cargo run --release --features debug
+```
 
-The `solve_recursively` function is responsible for attempting to solve the state of a specific cell in the current configuration. It iterates through each pattern matrix and applies the first one that is compatible with the existing state. Upon successfully applying a matrix, it proceeds to solve the next cell. The performance of this function can be influenced by the direction in which it solves the cells, controlled by the `solve_flow_y` flag. While `solve_flow_y = true` generally yields better performance, the optimal configuration may vary depending on the specific problem. If no compatible matrix can be found for a given state, the function returns `None`. If the subsequent cell's solution also returns `None`, backtracking occurs, indicating that the previously selected matrix is not applicable.
+## Config
 
-#### `try_pattern`
+- `FLOW_Y`: Whether to solve in the vertical or horizontal direction. `true` generally leads to better peformance, but can very based on the state.
+- `FILE_TO_READ`: The file path to read the initial state from.
+- `NUMBER_OF_PASSES`: The number of times to solve for the previous state. For example, if you wanted to calculate 3 states prior, this would be `3`.
 
-The `try_pattern` function attempts to apply a specific pattern matrix to the current state. It checks whether the matrix’s configuration contradicts any previously defined state values. If any contradictions are found, the pattern is deemed incompatible and cannot be applied.
+## General Tips
 
-#### `is_valid_position`
-
-This function verifies whether a particular segment of a pattern matrix can be applied to the current state, taking into account potential out-of-bounds issues.
-
-#### `pattern_conflicts_with_boundary`
-
-In conjunction with `is_valid_position`, the `pattern_conflicts_with_boundary` function determines whether any portion of the matrix that extends beyond the boundaries of the grid would cause a conflict. If the out-of-bounds cells contain zeros, they do not affect the neighbor count, and the matrix can still be applied. However, if there are ones in the out-of-bounds region, the matrix is invalid, as it would alter the count of neighbors inappropriately.
-
-### Main Function
-
-The primary function first attempts to solve the exact target state. If this approach fails, the algorithm introduces random noise into the configuration to facilitate a solvable state.
-
-# Conclusion
-The Game of Life Reverser employs a methodical approach to reverse Conway's Game of Life, utilizing pattern matrices and recursive backtracking to reconstruct possible previous states from a given target configuration. Through the strategic application of various pattern matrices and the use of efficient algorithms for state validation, the tool is capable of exploring potential solutions and addressing conflicts as they arise. The flexibility in adjusting the flow direction and introducing noise for solvability further enhances the robustness of the solver. This approach offers a powerful and adaptable method for reverse engineering the Game of Life, providing valuable insights into the temporal dynamics of cellular automata.
+Giving the input some buffer 0s (`-`s) can help it solve quicker. This means adding a lot of `-`s to the beginnings and endings of the input.
