@@ -7,16 +7,6 @@ use config::*;
 use solver::{GameOfLife, GameOfLifeReverser};
 
 fn main() {
-    // let target_state = vec![
-    //     vec![0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-    //     vec![0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
-    //     vec![0, 1, 0, 1, 1, 0, 0, 1, 0, 0],
-    //     vec![0, 1, 0, 1, 1, 1, 0, 1, 0, 0],
-    //     vec![0, 1, 0, 1, 1, 0, 0, 1, 0, 0],
-    //     vec![0, 1, 0, 0, 0, 0, 0, 1, 0, 0],
-    //     vec![0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
-    // ];
-
     let to_convert = std::fs::read_to_string(FILE_TO_READ).unwrap();
 
     let mut target_state = vec![];
