@@ -83,14 +83,8 @@ If a matrix were to be applied to a cell where it would go out of bounds (i.e. t
 
 ## Running
 
-Without debugging:
 ```sh
 cargo run --release
-```
-
-With:
-```sh
-cargo run --release --features debug
 ```
 
 ## Config

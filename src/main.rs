@@ -31,6 +31,12 @@ fn main() {
         }
     }
 
+    let mut target_state = ndarray::Array2::from_shape_vec(
+        (target_state.len(), target_state[0].len()),
+        target_state.into_iter().flatten().collect(),
+    )
+    .unwrap();
+
     for pass in 0..NUMBER_OF_PASSES {
         println!("Running pass {}", pass + 1);
         println!("Target state:");
@@ -48,9 +54,9 @@ fn main() {
 
             while solution.is_none() {
                 println!("Adding random noise");
-                let rand_x = rng.gen_range(0..current_target[0].len());
-                let rand_y = rng.gen_range(0..current_target.len());
-                current_target[rand_y][rand_x] = if current_target[rand_y][rand_x] == 0 {
+                let rand_x = rng.gen_range(0..current_target.ncols());
+                let rand_y = rng.gen_range(0..current_target.nrows());
+                current_target[[rand_y, rand_x]] = if current_target[[rand_y, rand_x]] == 0 {
                     1
                 } else {
                     0

@@ -1,14 +1,10 @@
+use ndarray::{Array2, Axis};
 use rayon::prelude::*;
 
-type Matrix = Vec<Vec<i32>>;
+type Matrix = Array2<i8>;
 
-#[allow(dead_code)]
 fn count_ones(matrix: &Matrix) -> usize {
-    matrix
-        .iter()
-        .flat_map(|row| row.iter())
-        .filter(|&&x| x == 1)
-        .count()
+    matrix.iter().filter(|&&x| x == 1).count()
 }
 
 struct GameConfig {
@@ -20,13 +16,17 @@ impl GameConfig {
     fn new() -> Self {
         let alive_patterns = Self::generate_patterns(1);
         let dead_patterns = Self::generate_patterns(0);
+
+        println!("Alive patterns: {}", alive_patterns.len());
+        println!("Dead patterns: {}", dead_patterns.len());
+
         Self {
             alive_patterns,
             dead_patterns,
         }
     }
 
-    fn generate_patterns(end_state: i32) -> Vec<Matrix> {
+    fn generate_patterns(end_state: i8) -> Vec<Matrix> {
         let mut patterns = Vec::new();
 
         if end_state == 1 {
@@ -45,7 +45,7 @@ impl GameConfig {
                 patterns.extend(Self::generate_single_pattern(1, neighbors));
             }
 
-            let neighbor_counts: Vec<i32> = (0..3).chain(4..9).collect();
+            let neighbor_counts: Vec<i8> = (0..3).chain(4..9).collect();
             for neighbors in neighbor_counts {
                 patterns.extend(Self::generate_single_pattern(0, neighbors));
             }
@@ -55,21 +55,21 @@ impl GameConfig {
         patterns
     }
 
-    fn generate_single_pattern(cell_state: i32, num_neighbors: i32) -> Vec<Matrix> {
+    fn generate_single_pattern(cell_state: i8, num_neighbors: i8) -> Vec<Matrix> {
         let mut patterns = Vec::new();
 
         // Generate all possible 3x3 matrices (2^9 possibilities)
         for i in 0..(1 << 9) {
-            let mut matrix = vec![vec![0; 3]; 3];
+            let mut matrix = Array2::zeros((3, 3));
             for bit in 0..9 {
                 let y = bit / 3;
                 let x = bit % 3;
-                matrix[y][x] = (i >> bit) & 1;
+                matrix[[y, x]] = (i >> bit) & 1;
             }
 
             // Check if matrix matches our criteria
-            let center_correct = matrix[1][1] == cell_state;
-            let neighbor_sum = matrix.iter().flat_map(|row| row.iter()).sum::<i32>() - matrix[1][1];
+            let center_correct = matrix[[1, 1]] == cell_state;
+            let neighbor_sum = matrix.sum() - matrix[[1, 1]];
 
             if center_correct && neighbor_sum == num_neighbors {
                 patterns.push(matrix);
@@ -90,9 +90,17 @@ pub struct GameOfLifeReverser {
 
 impl GameOfLifeReverser {
     pub fn new(target_state: Matrix, solve_flow_y: bool) -> Self {
-        let height = target_state.len();
-        let width = target_state[0].len();
+        let height = target_state.nrows();
+        let width = target_state.ncols();
         let config = GameConfig::new();
+
+        let per_cell_patterns = config.alive_patterns.len() + config.dead_patterns.len();
+        let big_int = num_bigint::BigUint::from(per_cell_patterns);
+        println!("Number of patterns per cell {}", big_int);
+        println!(
+            "Total number of patterns {}",
+            num_traits::pow(big_int, (height * width) as usize)
+        );
 
         Self {
             target_state,
@@ -104,18 +112,8 @@ impl GameOfLifeReverser {
     }
 
     pub fn find_previous_state(&mut self) -> Option<Matrix> {
-        let mut initial_state = vec![vec![-1; self.width]; self.height];
-        let alive_patterns = self.config.alive_patterns.clone();
-        let dead_patterns = self.config.dead_patterns.clone();
-        let result = self.solve_recursively(
-            0,
-            0,
-            &mut initial_state,
-            &alive_patterns,
-            &dead_patterns,
-            true,
-            0,
-        );
+        let mut initial_state = Array2::from_elem((self.height, self.width), -1);
+        let result = self.solve_recursively(0, 0, &mut initial_state, true);
 
         result
     }
@@ -125,25 +123,19 @@ impl GameOfLifeReverser {
         x: usize,
         y: usize,
         state: &mut Matrix,
-        alive_patterns: &Vec<Vec<Vec<i32>>>,
-        dead_patterns: &Vec<Vec<Vec<i32>>>,
         first: bool,
-        thread: usize,
     ) -> Option<Matrix> {
-        #[cfg(feature = "debug")]
-        println!("Exploring position ({}, {}) on thread {}", x, y, thread);
-
-        let patterns = if self.target_state[y][x] == 1 {
-            alive_patterns
+        let patterns = if self.target_state[[y, x]] == 1 {
+            &self.config.alive_patterns
         } else {
-            dead_patterns
+            &self.config.dead_patterns
         };
 
         if !first {
             for pattern in patterns {
                 let mut current_state = state.clone();
 
-                if self.try_pattern(x, y, &mut current_state, pattern, thread) {
+                if self.try_pattern(x, y, &mut current_state, pattern) {
                     if self.is_complete(x, y) {
                         return Some(current_state);
                     }
@@ -159,15 +151,9 @@ impl GameOfLifeReverser {
                     }
 
                     if next_y < self.height {
-                        if let Some(result) = self.solve_recursively(
-                            next_x,
-                            next_y,
-                            &mut current_state,
-                            alive_patterns,
-                            dead_patterns,
-                            false,
-                            thread,
-                        ) {
+                        if let Some(result) =
+                            self.solve_recursively(next_x, next_y, &mut current_state, false)
+                        {
                             return Some(result);
                         }
                     }
@@ -179,7 +165,7 @@ impl GameOfLifeReverser {
             let results = patterns.par_iter().find_map_any(|pattern| {
                 let mut current_state = state.clone();
 
-                if self.try_pattern(x, y, &mut current_state, pattern, thread) {
+                if self.try_pattern(x, y, &mut current_state, pattern) {
                     if self.is_complete(x, y) {
                         return Some(current_state);
                     }
@@ -195,15 +181,9 @@ impl GameOfLifeReverser {
                     }
 
                     if next_y < self.height {
-                        if let Some(result) = self.solve_recursively(
-                            next_x,
-                            next_y,
-                            &mut current_state,
-                            alive_patterns,
-                            dead_patterns,
-                            false,
-                            rand::random::<usize>(),
-                        ) {
+                        if let Some(result) =
+                            self.solve_recursively(next_x, next_y, &mut current_state, false)
+                        {
                             return Some(result);
                         }
                     }
@@ -216,43 +196,28 @@ impl GameOfLifeReverser {
         }
     }
 
-    fn try_pattern(
-        &self,
-        x: usize,
-        y: usize,
-        state: &mut Matrix,
-        pattern: &Matrix,
-        thread: usize,
-    ) -> bool {
+    fn try_pattern(&self, x: usize, y: usize, state: &mut Matrix, pattern: &Matrix) -> bool {
         for dy in -1..=1 {
             for dx in -1..=1 {
                 let new_x = x as i32 + dx;
                 let new_y = y as i32 + dy;
 
-                #[cfg(feature = "debug")]
-                println!(
-                    "Checking position ({}, {}) on thread {}",
-                    new_x, new_y, thread
-                );
-
                 if !self.is_valid_position(new_x, new_y) {
-                    if self.pattern_conflicts_with_boundary(pattern, new_x, new_y, thread) {
+                    if self.pattern_conflicts_with_boundary(pattern, new_x, new_y) {
                         return false;
                     }
                     continue;
                 }
 
-                let pattern_value = pattern[(dy + 1) as usize][(dx + 1) as usize];
+                let pattern_value = pattern[[(dy + 1) as usize, (dx + 1) as usize]];
                 let new_x = new_x as usize;
                 let new_y = new_y as usize;
 
-                if state[new_y][new_x] != -1 && state[new_y][new_x] != pattern_value {
-                    #[cfg(feature = "debug")]
-                    println!("Failed due to cell conflict on thread {}", thread);
+                if state[[new_y, new_x]] != -1 && state[[new_y, new_x]] != pattern_value {
                     return false;
                 }
 
-                state[new_y][new_x] = pattern_value;
+                state[[new_y, new_x]] = pattern_value;
             }
         }
 
@@ -263,32 +228,21 @@ impl GameOfLifeReverser {
         x >= 0 && (x as usize) < self.width && y >= 0 && (y as usize) < self.height
     }
 
-    #[allow(unused_variables)]
-    fn pattern_conflicts_with_boundary(
-        &self,
-        pattern: &Matrix,
-        new_x: i32,
-        new_y: i32,
-        thread: usize,
-    ) -> bool {
-        if new_x < 0 && pattern.iter().any(|row| row[0] != 0) {
-            #[cfg(feature = "debug")]
-            println!("Failed at left edge on thread {}", thread);
+    fn pattern_conflicts_with_boundary(&self, pattern: &Matrix, new_x: i32, new_y: i32) -> bool {
+        if new_x < 0 && pattern.index_axis(Axis(1), 0).iter().any(|&cell| cell != 0) {
             return true;
         }
-        if new_x >= self.width as i32 && pattern.iter().any(|row| row[2] != 0) {
-            #[cfg(feature = "debug")]
-            println!("Failed at right edge on thread {}", thread);
+        if new_x >= self.width as i32
+            && pattern.index_axis(Axis(1), 2).iter().any(|&cell| cell != 0)
+        {
             return true;
         }
-        if new_y < 0 && pattern[0].iter().any(|&cell| cell != 0) {
-            #[cfg(feature = "debug")]
-            println!("Failed at top edge on thread {}", thread);
+        if new_y < 0 && pattern.index_axis(Axis(0), 0).iter().any(|&cell| cell != 0) {
             return true;
         }
-        if new_y >= self.height as i32 && pattern[2].iter().any(|&cell| cell != 0) {
-            #[cfg(feature = "debug")]
-            println!("Failed at bottom edge on thread {}", thread);
+        if new_y >= self.height as i32
+            && pattern.index_axis(Axis(0), 2).iter().any(|&cell| cell != 0)
+        {
             return true;
         }
         false
@@ -299,8 +253,8 @@ impl GameOfLifeReverser {
     }
 
     pub fn visualize_state(state: &Matrix) {
-        for row in state {
-            for &cell in row {
+        for row in state.rows() {
+            for &cell in row.iter() {
                 match cell {
                     1 => print!("#"),
                     0 => print!("-"),
@@ -313,7 +267,6 @@ impl GameOfLifeReverser {
     }
 }
 
-// Create Game of Life simulation
 pub struct GameOfLife {
     pub state: Matrix,
     height: usize,
@@ -322,8 +275,8 @@ pub struct GameOfLife {
 
 impl GameOfLife {
     pub fn new(initial_state: Matrix) -> Self {
-        let height = initial_state.len();
-        let width = initial_state[0].len();
+        let height = initial_state.nrows();
+        let width = initial_state.ncols();
         Self {
             state: initial_state,
             height,
@@ -332,19 +285,19 @@ impl GameOfLife {
     }
 
     pub fn step(&mut self) {
-        let mut new_state = vec![vec![0; self.width]; self.height];
+        let mut new_state = Array2::zeros((self.height, self.width));
 
         for y in 0..self.height {
             for x in 0..self.width {
                 let neighbors = self.count_neighbors(x, y);
-                let cell = self.state[y][x];
+                let cell = self.state[[y, x]];
 
                 if cell == 1 && (neighbors == 2 || neighbors == 3) {
-                    new_state[y][x] = 1;
+                    new_state[[y, x]] = 1;
                 } else if cell == 0 && neighbors == 3 {
-                    new_state[y][x] = 1;
+                    new_state[[y, x]] = 1;
                 } else {
-                    new_state[y][x] = 0;
+                    new_state[[y, x]] = 0;
                 }
             }
         }
@@ -368,7 +321,7 @@ impl GameOfLife {
                     && new_x < self.width as i32
                     && new_y >= 0
                     && new_y < self.height as i32
-                    && self.state[new_y as usize][new_x as usize] == 1
+                    && self.state[[new_y as usize, new_x as usize]] == 1
                 {
                     count += 1;
                 }
